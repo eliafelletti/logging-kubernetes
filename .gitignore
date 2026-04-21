@@ -251,7 +251,6 @@ $RECYCLE.BIN/
 ### CUSTOM ### 
 # Secrets and environment variables
 .env
-.env.*
 secrets/*.yaml
 !k8s/**/*.yaml  # Assicurati di NON ignorare i manifesti K8s, ma fai attenzione!
 
