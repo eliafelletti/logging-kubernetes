@@ -87,7 +87,7 @@ def get_users():
 
     return jsonify([user.__todict__() for user in users]), 200
 
-@app.route('api/user/<int:user_id>', methods=['GET'])
+@app.route('/api/user/<int:user_id>', methods=['GET'])
 def get_user(user_id):
     ''' API endpoint to retrieve a specific user by ID'''
     # helpful method to get a user or return a 404 error if not found
