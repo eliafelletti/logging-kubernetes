@@ -1,6 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-from dotenv import load_dotenv
 
 '''
     This module defines the database models for the application. It uses SQLAlchemy to create a User model with fields for id, username, email, and created_at. 
@@ -12,8 +11,6 @@ db = SQLAlchemy()
 
 class User(db.Model):
     __tablename__ = 'users' # Table name in the database
-
-    load_dotenv() # Load environment variables from a .env file if present
 
     # Columns
     id = db.Column(db.Integer, primary_key=True)

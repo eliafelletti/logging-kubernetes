@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 
 '''
     Configuration class for the Flask application. This class loads database connection parameters and other settings from environment variables, 
@@ -12,6 +13,8 @@ def get_env_variable(name: str) -> str:
     if value is None:
         raise ValueError(f"❌ Environment variable '{name}' is not set.")
     return value
+
+load_dotenv() # Load environment variables from a .env file if present
 
 class Config:
     # Database configuration for standard PostgreSQL connection parameters with defaults
