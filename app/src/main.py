@@ -164,3 +164,6 @@ def delete_user(user_id):
         logger.error("Errore database durante eliminazione utente", extra={**g.log_context, "db_error": str(e)})
 
         return jsonify({'error': 'DB error during deletion'}), 500
+    
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
