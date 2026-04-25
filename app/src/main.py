@@ -1,7 +1,9 @@
 import time
 import uuid
 import logging
-from flask import Flask, request, jsonify, render_template, g
+from flask import Flask, request, jsonify, render_template, g, has_request_context
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 from config import Config
 from models import db, User
 from logging_config import setup_logging    
@@ -33,6 +35,7 @@ with app.app_context():
 @app.before_request
 def start_timer():
     ''' Start a timer to measure request processing time and generate a unique request ID for tracing in logs '''
+
     g.start_time = time.time()
     g.request_id = request.headers.get('X-Request-ID', str(uuid.uuid4())) 
 
@@ -48,6 +51,7 @@ def start_timer():
 @app.after_request
 def log_response(response):
     ''' Log the response details along with the processing time '''
+
     if hasattr(g, 'start_time'):
         latency = time.time() - g.start_time
         g.log_context['latency_ms'] = round(latency * 1000, 2)  # Convert to milliseconds
@@ -60,15 +64,28 @@ def log_response(response):
         return response
     else:
         logger.warning("⚠️ No start time found for request, cannot calculate latency.")
+
         return response
     
-    
+@event.listens_for(Engine, "before_cursor_execute")
+def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    ''' Log SQL queries for debugging, performance monitoring and SQL injection detection '''
+
+    if has_request_context():
+        ctx = getattr(g, 'log_context', {"system": "internal_request"})
+    else:
+        ctx = {"system": "start_up", "request_id": "internal-init", "path": "system_startup"}
+
+    logger.info("🔍 Executing SQL Statement", extra={**ctx, "sql_query": statement, "sql_params": str(parameters)})
+
+
 '''
     Route definitions
 '''
 @app.route('/')
 def index():
     ''' Render the index page '''
+
     return render_template('index.html')
 
 
@@ -78,6 +95,7 @@ def index():
 @app.route('/api/users', methods=['GET'])
 def get_users():
     ''' API endpoint to retrieve all users, with support for latency simulation'''
+
     delay = request.args.get('delay', default=0, type=int)
     if delay > 0:
         logger.warning(f"⏳ Simulating latency of {delay} seconds for testing purposes.", extra=g.log_context)
@@ -90,6 +108,7 @@ def get_users():
 @app.route('/api/user/<int:user_id>', methods=['GET'])
 def get_user(user_id):
     ''' API endpoint to retrieve a specific user by ID'''
+
     # helpful method to get a user or return a 404 error if not found
     user = User.query.get_or_404(user_id)
 
@@ -98,6 +117,7 @@ def get_user(user_id):
 @app.route('/api/user', methods=['POST'])
 def create_user():
     ''' API endpoint to create a new user'''
+
     data = request.json
 
     if not data or 'username' not in data or 'email' not in data:
@@ -122,6 +142,7 @@ def create_user():
 @app.route('/api/user/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
     ''' API endpoint to update an existing user's information'''
+
     user = User.query.get_or_404(user_id)
     data = request.json
 
@@ -150,6 +171,7 @@ def update_user(user_id):
 @app.route('/api/user/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
     ''' API endpoint to delete a user by ID'''
+
     user = User.query.get_or_404(user_id)
 
     try:
