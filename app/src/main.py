@@ -1,8 +1,9 @@
 import time
 import uuid
 import logging
+import math
 from flask import Flask, request, jsonify, render_template, g, has_request_context
-from sqlalchemy import event
+from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
 from config import Config
 from models import db, User
@@ -94,7 +95,7 @@ def index():
 '''
 @app.route('/api/users', methods=['GET'])
 def get_users():
-    ''' API endpoint to retrieve all users, with support for latency simulation'''
+    ''' API endpoint to retrieve all users, with support for latency simulation '''
 
     delay = request.args.get('delay', default=0, type=int)
     if delay > 0:
@@ -105,18 +106,20 @@ def get_users():
 
     return jsonify([user.__todict__() for user in users]), 200
 
+
 @app.route('/api/user/<int:user_id>', methods=['GET'])
 def get_user(user_id):
-    ''' API endpoint to retrieve a specific user by ID'''
+    ''' API endpoint to retrieve a specific user by ID '''
 
     # helpful method to get a user or return a 404 error if not found
     user = User.query.get_or_404(user_id)
 
     return jsonify(user.__todict__()), 200
 
+
 @app.route('/api/user', methods=['POST'])
 def create_user():
-    ''' API endpoint to create a new user'''
+    ''' API endpoint to create a new user '''
 
     data = request.json
 
@@ -135,13 +138,14 @@ def create_user():
         return jsonify(new_user.__todict__()), 201
     except Exception as e:
         db.session.rollback() # crucial for maintaining database integrity in case of errors -> resilient design
-        logger.error("Errore database durante creazione utente", extra={**g.log_context, "db_error": str(e)})
+        logger.error("❌ Errore database durante creazione utente", extra={**g.log_context, "db_error": str(e)})
 
         return jsonify({'error': 'Username or email already exists (or DB error)'}), 409
     
+    
 @app.route('/api/user/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
-    ''' API endpoint to update an existing user's information'''
+    ''' API endpoint to update an existing user's information '''
 
     user = User.query.get_or_404(user_id)
     data = request.json
@@ -164,13 +168,14 @@ def update_user(user_id):
         return jsonify(user.__todict__()), 200
     except Exception as e:
         db.session.rollback() # crucial for maintaining database integrity in case of errors -> resilient design
-        logger.error("Errore database durante aggiornamento utente", extra={**g.log_context, "db_error": str(e)})
+        logger.error("❌ Errore database durante aggiornamento utente", extra={**g.log_context, "db_error": str(e)})
 
         return jsonify({'error': 'Username or email already exists (or DB error)'}), 409
     
+    
 @app.route('/api/user/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
-    ''' API endpoint to delete a user by ID'''
+    ''' API endpoint to delete a user by ID '''
 
     user = User.query.get_or_404(user_id)
 
@@ -183,9 +188,74 @@ def delete_user(user_id):
         return jsonify({'message': 'User deleted successfully'}), 200
     except Exception as e:
         db.session.rollback() # crucial for maintaining database integrity in case of errors -> resilient design
-        logger.error("Errore database durante eliminazione utente", extra={**g.log_context, "db_error": str(e)})
+        logger.error("❌ Errore database durante eliminazione utente", extra={**g.log_context, "db_error": str(e)})
 
         return jsonify({'error': 'DB error during deletion'}), 500
     
+
+'''
+    Additional API endpoints for testing and observability
+'''
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    ''' API endpoint for Kubernetes liveness and readiness probes '''
+    try:
+        # Simple DB query to check database connectivity
+        db.session.execute(text('SELECT 1'))
+        
+        return jsonify({
+            "status": "healthy",
+            "database": "connected",
+            "timestamp": time.time()
+        }), 200
+    except Exception as e:
+        logger.critical("🚨 HEALTH CHECK FAILED", extra={**g.log_context, "error": str(e)})
+        
+        return jsonify({"status": "unhealthy", "error": "Database unreachable"}), 503
+    
+    
+@app.route('/api/panic', methods=['GET'])
+def trigger_panic():
+    ''' API endpoint to simulate a server crash '''
+    logger.critical("🚨 PANIC endpoint triggered - simulating server crash!", extra=g.log_context)
+
+    raise Exception("Simulated server crash for testing purposes")
+
+    
+@app.route('/api/log_storm', methods=['GET'])
+def log_storm():
+    ''' API endpoint to simulate a log storm for testing Loki ingestion capabilities '''
+    count = request.args.get('count', default=100, type=int)
+
+    logger.info(f"🌪️ Starting log storm: {count} lines", extra=g.log_context)
+
+    for i in range(count):
+        level = i % 3
+        msg = f"Storm log sequence {i}/{count}"
+        # Enrichment of logs with structured data for better observability and debugging in Grafana
+        if level == 0:
+            logger.info(f"🔹 {msg}", extra={**g.log_context, "storm_id": i})
+        elif level == 1:
+            logger.warning(f"⚠️ {msg}", extra={**g.log_context, "storm_id": i})
+        else:
+            logger.error(f"❌ {msg}", extra={**g.log_context, "storm_id": i, "fake_error_code": 500 + i})
+            
+    return jsonify({"message": f"Generati {count} log strutturati"}), 200
+
+
+@app.route(('/api/stress_cpu'), methods=['GET'])
+def stress_cpu():
+    ''' API endpoint to simulate CPU stress for testing auto-scaling and performance monitoring '''
+    duration = request.args.get('duration', default=5, type=int)
+    end_time = time.time() + duration
+
+    logger.warning(f"🔥 Starting CPU stress test for {duration} seconds", extra=g.log_context)
+
+    while time.time() < end_time:
+        _ = math.sqrt(math.factorial(1000)) # Computationally intensive task to simulate CPU load
+
+    return jsonify({"message": f"CPU stress test completed after {duration} seconds"}), 200
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
