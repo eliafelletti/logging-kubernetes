@@ -252,7 +252,7 @@ def stress_cpu():
     logger.warning(f"🔥 Starting CPU stress test for {duration} seconds", extra=g.log_context)
 
     while time.time() < end_time:
-        _ = math.sqrt(math.factorial(1000)) # Computationally intensive task to simulate CPU load
+        _ = sum(i**2 for i in range(10000)) # Computationally intensive task to simulate CPU load
 
     return jsonify({"message": f"CPU stress test completed after {duration} seconds"}), 200
 
