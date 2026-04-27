@@ -15,7 +15,7 @@ def setup_logging():
 
     # Configure the JSON formatter to include timestamp, log level, and message
     formatter = jsonlogger.JsonFormatter(
-        fmt='%(asctime)s %(levelname)s %(name)s %(message)s %(request_id)s %(method)s %(path)s',
+        fmt='%(asctime)s %(levelname)s %(process)d %(name)s %(message)s %(request_id)s %(method)s %(path)s',
         json_ensure_ascii=False
     )
 

@@ -5,12 +5,19 @@ import math
 from flask import Flask, request, jsonify, render_template, g, has_request_context
 from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
-from config import Config
-from models import db, User
-from logging_config import setup_logging    
+
+# Used src.<module_name> to avoid circular imports and ensure proper initialization order 
+from src.config import Config
+from src.models import db, User
+from src.logging_config import setup_logging    
 
 '''
-    Main comment...TODO
+    Main application file for the Flask web application.
+    This file initializes the Flask app, sets up the database, configures logging, and defines all routes and API endpoints.
+    The application includes:
+        - CRUD operations for user management
+        - Health check endpoint for Kubernetes probes
+        - Endpoints to simulate server crashes, log storms, and CPU stress for testing purposes
 '''
 
 '''
@@ -257,5 +264,25 @@ def stress_cpu():
     return jsonify({"message": f"CPU stress test completed after {duration} seconds"}), 200
 
 
+# Run the Flask application in debug mode on all interfaces (werkzeug), listening on port 5000. 
+# In production, this will be overridden by Gunicorn as specified in the Dockerfile.
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+# When running with Gunicorn, the application will be served with multiple workers and proper logging configuration as defined in the Dockerfile.
+if __name__ != '__main__':
+    gunicorn_logger = logging.getLogger('gunicorn.error')
+
+    # Use the same JSON formatter for Gunicorn retrieved from the logger configured in logging_config.py
+    my_json_formatter = logger.handlers[0].formatter
+
+    # Set the same JSON formatter for all Gunicorn handlers to ensure consistent log formatting across the application and Gunicorn
+    for handler in gunicorn_logger.handlers:
+        handler.setFormatter(my_json_formatter)
+
+    # Ensure that the log level of the application logger matches the Gunicorn logger to avoid missing logs due to level mismatches
+    logger.handlers = gunicorn_logger.handlers
+    logger.setLevel(gunicorn_logger.level)
+
+    logger.info('🚀 Flask application running with Gunicorn', extra={"system": "app_startup", "request_id": "internal-init", "path": "app_initialization"})
+    logger.info("🚀 Flask application initialized and ready to serve requests.", extra={"system": "app_startup", "request_id": "internal-init", "path": "app_initialization"})
