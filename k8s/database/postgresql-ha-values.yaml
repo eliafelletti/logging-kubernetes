@@ -1,0 +1,79 @@
+global:
+  postgresql:
+    repmgrUsername: "repmgr"
+    repmgrDatabase: "repmgr"
+    existingSecret: "pg-secret" # Pre-created Kubernetes Secret containing PostgreSQL credentials
+
+  pgpool:
+    existingSecret: "pgpool-secret" # Pre-created Kubernetes Secret containing pgpool credentials
+
+
+  # -- SECURITY NOTE --
+  # We set allowInsecureImages to true because Bitnami charts perform 
+  # a signature/origin check on images. Since we are pulling from the 
+  # official AWS ECR mirror instead of Docker Hub, the chart warns about 
+  # "unrecognized" containers. These are official Bitnami images, 
+  # just hosted on a different registry.
+  security:
+    allowInsecureImages: true
+
+
+# -- REGISTRY MIGRATION --
+  # Switched from docker.io to public.ecr.aws. 
+  # Bitnami has moved specific version tags (like -rX) to a commercial 
+  # subscription on Docker Hub. The Public ECR registry remains the 
+  # official source for free, up-to-date OCI artifacts.
+postgresql:
+  # 3 replicas for high availability (1 primary + 2 replicas) 
+  replicaCount: 3
+  image:
+    registry: "public.ecr.aws"
+    repository: "bitnami/postgresql-repmgr"
+    tag: "17.6.0-debian-12-r9"
+
+  # Resource boundaries
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "300m"
+    limits:
+      memory: "1Gi"
+      cpu: "600m"
+
+  livenessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 10
+  readinessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+pgpool:
+  replicaCount: 1
+  image:
+    registry: "public.ecr.aws"
+    repository: "bitnami/pgpool"
+    tag: "4.7.1-debian-12-r2"
+
+  # Custom Pgpool-II configuration to optimize connection pooling, logging, and child process lifecycle
+  configuration: |
+    listen_addresses = '*'
+    port = 5432
+    log_per_node_statement = on
+    log_statement = on
+    log_hostname = on
+    child_life_time = 300
+    child_max_connections = 100
+    connection_cache = on
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "400m"
+
+persistence:
+  # Enable Persistent Volume Claims (PVCs) to prevent data loss when pods restart
+  enabled: true
+  size: 8Gi

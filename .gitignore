@@ -260,3 +260,9 @@ secrets/*.yaml
 
 # Local log files
 *.log
+
+# Personal txt notes (if you have any)
+personal_notes/
+
+# Ignore base Helm charts
+k8s/database/base_*.yaml
