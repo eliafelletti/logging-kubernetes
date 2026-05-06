@@ -266,3 +266,6 @@ personal_notes/
 
 # Ignore base Helm charts
 k8s/database/base_*.yaml
+
+# Ignore complete ingress-nginx yaml file
+my-ingress-service.yaml
