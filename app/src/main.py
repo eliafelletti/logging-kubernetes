@@ -7,9 +7,9 @@ from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
 
 # Used src.<module_name> to avoid circular imports and ensure proper initialization order 
-from src.config import Config
-from src.models import db, User
-from src.logging_config import setup_logging    
+from config import Config
+from models import db, User
+from logging_config import setup_logging    
 
 '''
     Main application file for the Flask web application.
@@ -85,6 +85,16 @@ def before_cursor_execute(conn, cursor, statement, parameters, context, executem
         ctx = {"system": "start_up", "request_id": "internal-init", "path": "system_startup"}
 
     logger.info("🔍 Executing SQL Statement", extra={**ctx, "sql_query": statement, "sql_params": str(parameters)})
+
+
+
+'''
+    Global error handler to ensure API always returns JSON instead of HTML
+'''
+@app.errorhandler(404)
+def resource_not_found(e):
+    logger.warning("⚠️ 404 Not Found triggered", extra=getattr(g, 'log_context', {}))
+    return jsonify({"error": "Risorsa non trovata"}), 404
 
 
 '''
