@@ -7,9 +7,9 @@ from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
 
 # Used src.<module_name> to avoid circular imports and ensure proper initialization order 
-from config import Config
-from models import db, User
-from logging_config import setup_logging    
+from src.config import Config
+from src.models import db, User
+from src.logging_config import setup_logging    
 
 '''
     Main application file for the Flask web application.
