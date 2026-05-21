@@ -1,4 +1,5 @@
 import pytest
+from werkzeug.exceptions import NotFound
 
 class FakeUser:
     def __todict__(self):
@@ -93,4 +94,40 @@ def test_get_users_delay(client, mocker):
     assert data[0]["email"] == "test@mail.com"
 
     
-    
+def test_get_user_by_id(client, mocker):
+    '''
+        Test /api/users/<id> endpoint to ensure it returns the correct user.
+    '''
+
+    # mock of db call to return the mocked user
+    mock_query = mocker.patch('src.main.User.query')
+    mock_query.get_or_404.return_value = FakeUser()
+
+    # API call
+    response = client.get('/api/user/1')
+    data = response.get_json()
+
+    # verify that the query was executed once with the correct ID
+    mock_query.get_or_404.assert_called_once_with(1)
+
+    assert response.status_code == 200
+    assert data["username"] == "testuser"
+    assert data["email"] == "test@mail.com"
+
+def test_get_user_by_id_not_found(client, mocker):
+    '''
+        Test /api/users/<id> endpoint to ensure it returns 404 for non-existent user.
+    '''
+
+    # mock of db call to return None simulating user not found
+    mock_query = mocker.patch('src.main.User.query')
+    mock_query.get_or_404.side_effect = NotFound()
+
+    # API call
+    response = client.get('/api/user/999999999999')
+
+    # verify that the query was executed once with the correct ID
+    mock_query.get_or_404.assert_called_once_with(999999999999)
+
+    assert response.status_code == 404
+    assert response.get_json()["error"] == "Risorsa non trovata"
