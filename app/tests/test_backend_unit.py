@@ -131,3 +131,78 @@ def test_get_user_by_id_not_found(client, mocker):
 
     assert response.status_code == 404
     assert response.get_json()["error"] == "Risorsa non trovata"
+
+def test_create_user(client):
+    '''
+        Test /api/user endpoint to ensure it creates a new user.
+    '''
+
+    # API call
+    response = client.post('/api/user', json={
+        "username": "newuser",
+        "email": "newuser@mail.com"
+    })
+
+    assert response.status_code == 201
+    assert response.get_json()["username"] == "newuser"
+    assert response.get_json()["email"] == "newuser@mail.com"
+
+def test_create_user_error(client, mocker):
+    '''
+        Test /api/user endpoint to ensure it returns 409
+    '''
+
+    # mock of db call to raise an exception simulating conflict
+    mock_add = mocker.patch('src.main.db.session.add', side_effect=Exception("Conflict"))
+    mock_rollback = mocker.patch('src.main.db.session.rollback')
+
+    # API call
+    response = client.post('/api/user', json={
+        "username": "newuser",
+        "email": "newuser@mail.com"
+    })
+
+    # verify that the db session add and rollback were called
+    mock_add.assert_called_once()
+    mock_rollback.assert_called_once()
+
+    assert response.status_code == 409
+    assert response.get_json()["error"] == "Username or email already exists (or DB error)"
+
+
+def test_create_user_no_data(client):
+    '''
+        Test /api/user endpoint to ensure it returns 400 for invalid input data.
+    '''
+
+    # API call with missing username
+    response = client.post('/api/user', json={})
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Invalid request, username and email are required"
+
+def test_create_user_missing_email(client):
+    '''
+        Test /api/user endpoint to ensure it returns 400 for invalid input data.
+    '''
+
+    # API call with missing email
+    response = client.post('/api/user', json={
+        "username": "newuser"
+    })
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Invalid request, username and email are required"
+
+def test_create_user_missing_username(client):
+    '''
+        Test /api/user endpoint to ensure it returns 400 for invalid input data.
+    '''
+
+    # API call with missing username
+    response = client.post('/api/user', json={
+        "email": "newuser@mail.com"
+    })
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Invalid request, username and email are required"
