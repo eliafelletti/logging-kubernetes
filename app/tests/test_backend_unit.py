@@ -52,12 +52,15 @@ def test_get_users(client, mocker):
     '''
 
     # mock of db call to return the mocked user
-    mock_execute = mocker.patch('src.main.User.query')
-    mock_execute.all.return_value = [FakeUser()]
+    mock_query = mocker.patch('src.main.User.query')
+    mock_query.all.return_value = [FakeUser()]
 
     # API call
     response = client.get('/api/users')
     data = response.get_json()
+
+    # verify that the query was executed once
+    mock_query.all.assert_called_once() 
 
     assert response.status_code == 200
     assert data[0]["username"] == "testuser"
@@ -69,8 +72,8 @@ def test_get_users_delay(client, mocker):
     '''
 
     # mock of db call to return the mocked user
-    mock_execute = mocker.patch('src.main.User.query')
-    mock_execute.all.return_value = [FakeUser()]
+    mock_query = mocker.patch('src.main.User.query')
+    mock_query.all.return_value = [FakeUser()]
 
     # mock of time.sleep to simulate delay
     mock_sleep = mocker.patch('src.main.time.sleep', return_value=None)
@@ -81,6 +84,9 @@ def test_get_users_delay(client, mocker):
 
     # verify that time.sleep was called with the correct delay
     mock_sleep.assert_called_once_with(2)
+
+    # verify that the query was executed once
+    mock_query.all.assert_called_once()
 
     assert response.status_code == 200
     assert data[0]["username"] == "testuser"
