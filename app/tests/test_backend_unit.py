@@ -14,43 +14,7 @@ class FakeUser:
             "email": self.email
         }
 
-def test_health_check_success(client, mocker):
-    """
-        Test /api/health endpoint simulating a healthy database connection (200).
-    """
-
-    # mock of db call to return a successful result
-    mock_execute = mocker.patch('src.main.db.session.execute')
-    
-    # API call
-    response = client.get('/api/health')
-
-    # verify that the db call was made exactly once
-    mock_execute.assert_called_once()
-    
-    # assertion: status code 200 and response body contains "healthy"
-    assert response.status_code == 200
-    assert response.get_json()["status"] == "healthy"
-
-def test_health_check_db_failure(client, mocker):
-    """
-        Test /api/health endpoint simulating a database failure (503).
-    """
-
-    # mock of db call to raise an exception simulating DB offline
-    mock_execute = mocker.patch('src.main.db.session.execute', side_effect=Exception("DB Offline"))
-    
-    # API call
-    response = client.get('/api/health')
-
-    # verify that the db call was made exactly once
-    mock_execute.assert_called_once()
-    
-    # assertion: status code 503 and response body contains "unhealthy"
-    assert response.status_code == 503
-    assert response.get_json()["status"] == "unhealthy"
-
-    
+"""   CRUD Tests on users   """   
 
 def test_get_users(client, mocker):
     '''
@@ -360,13 +324,94 @@ def test_delete_user(client, mocker):
     mock_query = mocker.patch('src.main.User.query')
     mock_query.get_or_404.return_value = FakeUser()
 
-    # mock of db session commit to do nothing
+    # mock of db session delete and commit to do nothing
+    mock_delete = mocker.patch('src.main.db.session.delete')
     mock_commit = mocker.patch('src.main.db.session.commit')
 
     # API call
     response = client.delete('/api/user/1')
 
-    # verify that the db session commit was called once
+    # verify that the db session delete and commit were called once
+    mock_delete.assert_called_once()
     mock_commit.assert_called_once()
 
-    assert response.status_code == 204  # No Content
+    assert response.status_code == 200
+    assert response.get_json()["message"] == "User deleted successfully"
+
+def test_delete_user_not_found(client, mocker):
+    '''
+        Test /api/user/<id> endpoint to ensure it returns 404 for non-existent user.
+    '''
+
+    # mock of db call to return None simulating user not found
+    mock_query = mocker.patch('src.main.User.query')
+    mock_query.get_or_404.side_effect = NotFound()
+
+    # API call
+    response = client.delete('/api/user/999999999999')
+
+    assert response.status_code == 404
+    assert response.get_json()["error"] == "Risorsa non trovata"
+
+def test_delete_user_error(client, mocker):
+    '''
+        Test /api/user/<id> endpoint to ensure it returns 500 on delete error.
+    '''
+
+    # mock of db call to return the mocked user
+    mock_query = mocker.patch('src.main.User.query')
+    mock_query.get_or_404.return_value = FakeUser()
+
+    # mock of db session delete and commit to raise an exception simulating error
+    mock_delete = mocker.patch('src.main.db.session.delete')
+    mock_commit = mocker.patch('src.main.db.session.commit', side_effect=Exception("DB Error"))
+    mock_rollback = mocker.patch('src.main.db.session.rollback')
+
+    # API call
+    response = client.delete('/api/user/1')
+
+    # verify that the db session delete, commit, and rollback were called once
+    mock_delete.assert_called_once()
+    mock_commit.assert_called_once()
+    mock_rollback.assert_called_once()
+
+    assert response.status_code == 500
+    assert response.get_json()["error"] == "DB error during deletion"
+
+'''   Extra features tests   '''
+
+def test_health_check_success(client, mocker):
+    """
+        Test /api/health endpoint simulating a healthy database connection (200).
+    """
+
+    # mock of db call to return a successful result
+    mock_execute = mocker.patch('src.main.db.session.execute')
+    
+    # API call
+    response = client.get('/api/health')
+
+    # verify that the db call was made exactly once
+    mock_execute.assert_called_once()
+    
+    # assertion: status code 200 and response body contains "healthy"
+    assert response.status_code == 200
+    assert response.get_json()["status"] == "healthy"
+
+def test_health_check_db_failure(client, mocker):
+    """
+        Test /api/health endpoint simulating a database failure (503).
+    """
+
+    # mock of db call to raise an exception simulating DB offline
+    mock_execute = mocker.patch('src.main.db.session.execute', side_effect=Exception("DB Offline"))
+    
+    # API call
+    response = client.get('/api/health')
+
+    # verify that the db call was made exactly once
+    mock_execute.assert_called_once()
+    
+    # assertion: status code 503 and response body contains "unhealthy"
+    assert response.status_code == 503
+    assert response.get_json()["status"] == "unhealthy"
