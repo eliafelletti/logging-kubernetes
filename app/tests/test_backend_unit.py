@@ -32,7 +32,6 @@ def test_health_check_success(client, mocker):
     assert response.status_code == 200
     assert response.get_json()["status"] == "healthy"
 
-
 def test_health_check_db_failure(client, mocker):
     """
         Test /api/health endpoint simulating a database failure (503).
@@ -52,6 +51,7 @@ def test_health_check_db_failure(client, mocker):
     assert response.get_json()["status"] == "unhealthy"
 
     
+
 def test_get_users(client, mocker):
     '''
         Test /api/users endpoint to ensure it returns a list of users.
@@ -97,8 +97,7 @@ def test_get_users_delay(client, mocker):
     assert response.status_code == 200
     assert data[0]["username"] == "testuser"
     assert data[0]["email"] == "test@mail.com"
-
-    
+  
 def test_get_user_by_id(client, mocker):
     '''
         Test /api/users/<id> endpoint to ensure it returns the correct user.
@@ -137,6 +136,8 @@ def test_get_user_by_id_not_found(client, mocker):
     assert response.status_code == 404
     assert response.get_json()["error"] == "Risorsa non trovata"
 
+
+
 def test_create_user(client):
     '''
         Test /api/user endpoint to ensure it creates a new user.
@@ -174,7 +175,6 @@ def test_create_user_error(client, mocker):
     assert response.status_code == 409
     assert response.get_json()["error"] == "Username or email already exists (or DB error)"
 
-
 def test_create_user_no_data(client):
     '''
         Test /api/user endpoint to ensure it returns 400 for invalid input data.
@@ -211,3 +211,162 @@ def test_create_user_missing_username(client):
 
     assert response.status_code == 400
     assert response.get_json()["error"] == "Invalid request, username and email are required"
+
+
+
+def test_update_user(client, mocker):
+    '''
+        Test /api/user/<id> endpoint to ensure it updates an existing user.
+    '''
+
+    # mock of db call to return the mocked user
+    mock_query = mocker.patch('src.main.User.query')
+    mock_user = FakeUser()
+    mock_query.get_or_404.return_value = mock_user
+
+    # mock of db session commit to do nothing
+    mock_commit = mocker.patch('src.main.db.session.commit')
+
+    # API call
+    response = client.put('/api/user/1', json={
+        "username": "updateduser",
+        "email": "updateduser@mail.com"
+    })
+
+    # verify that the db session commit was called once
+    mock_commit.assert_called_once()
+
+    assert response.status_code == 200
+    assert response.get_json()["username"] == "updateduser"
+    assert response.get_json()["email"] == "updateduser@mail.com"
+
+def test_update_user_not_found(client, mocker):
+    '''
+        Test /api/user/<id> endpoint to ensure it returns 404 for non-existent user.
+    '''
+
+    # mock of db call to return None simulating user not found
+    mock_query = mocker.patch('src.main.User.query')
+    mock_query.get_or_404.side_effect = NotFound()
+
+    # API call
+    response = client.put('/api/user/999999999999', json={
+        "username": "updateduser",
+        "email": "updateduser@mail.com"
+    })
+
+    assert response.status_code == 404  
+    assert response.get_json()["error"] == "Risorsa non trovata"
+
+def test_update_user_no_data(client, mocker):
+    '''
+        Test /api/user/<id> endpoint to ensure it returns 400 for invalid input data.
+    '''
+
+    # mock of db call to return the mocked user
+    mock_query = mocker.patch('src.main.User.query')
+    mock_query.get_or_404.return_value = FakeUser()
+
+    # API call
+    response = client.put('/api/user/1', json={})
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "No data provided"
+
+def test_update_user_only_username(client, mocker):
+    '''
+        Test /api/user/<id> endpoint to ensure it updates only the username.
+    '''
+
+    # mock of db call to return the mocked user
+    mock_query = mocker.patch('src.main.User.query')
+    mock_user = FakeUser()
+    mock_query.get_or_404.return_value = mock_user
+
+    # mock of db session commit to do nothing
+    mock_commit = mocker.patch('src.main.db.session.commit')
+
+    # API call
+    response = client.put('/api/user/1', json={
+        "username": "updateduser"
+    })
+
+    # verify that the db session commit was called once
+    mock_commit.assert_called_once()
+
+    assert response.status_code == 200
+    assert response.get_json()["username"] == "updateduser"
+    assert response.get_json()["email"] == "test@mail.com"  # email should remain unchanged
+
+def test_update_user_only_email(client, mocker):
+    '''
+        Test /api/user/<id> endpoint to ensure it updates only the email.
+    '''
+
+    # mock of db call to return the mocked user
+    mock_query = mocker.patch('src.main.User.query')
+    mock_user = FakeUser()
+    mock_query.get_or_404.return_value = mock_user
+
+    # mock of db session commit to do nothing
+    mock_commit = mocker.patch('src.main.db.session.commit')  
+
+    # API call
+    response = client.put('/api/user/1', json={
+        "email": "updateduser@mail.com"
+    })
+
+    # verify that the db session commit was called once
+    mock_commit.assert_called_once()
+
+    assert response.status_code == 200
+    assert response.get_json()["email"] == "updateduser@mail.com"
+    assert response.get_json()["username"] == "testuser"  # username should remain unchanged
+
+def test_update_error(client, mocker):
+    '''
+        Test /api/user/<id> endpoint to ensure it returns 409 on update conflict.
+    '''
+
+    # mock of db call to return the mocked user
+    mock_query = mocker.patch('src.main.User.query')
+    mock_query.get_or_404.return_value = FakeUser()
+
+    # mock of db session commit to raise an exception simulating conflict
+    mock_commit = mocker.patch('src.main.db.session.commit', side_effect=Exception("Conflict"))
+    mock_rollback = mocker.patch('src.main.db.session.rollback')
+
+    # API call
+    response = client.put('/api/user/1', json={
+        "username": "updateduser",
+        "email": "updateduser@mail.com"
+    })
+
+    # verify that the db session commit and rollback were called once
+    mock_commit.assert_called_once()
+    mock_rollback.assert_called_once()
+
+    assert response.status_code == 409
+    assert response.get_json()["error"] == "Username or email already exists (or DB error)"
+
+
+
+def test_delete_user(client, mocker):
+    '''
+        Test /api/user/<id> endpoint to ensure it deletes an existing user.
+    '''
+
+    # mock of db call to return the mocked user
+    mock_query = mocker.patch('src.main.User.query')
+    mock_query.get_or_404.return_value = FakeUser()
+
+    # mock of db session commit to do nothing
+    mock_commit = mocker.patch('src.main.db.session.commit')
+
+    # API call
+    response = client.delete('/api/user/1')
+
+    # verify that the db session commit was called once
+    mock_commit.assert_called_once()
+
+    assert response.status_code == 204  # No Content
