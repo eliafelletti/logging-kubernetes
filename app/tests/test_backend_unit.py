@@ -490,3 +490,15 @@ def test_stress_cpu_custom_duration(client, mocker):
 
     assert response.status_code == 200
     assert data["message"] == "CPU stress test completed after 100000 seconds"
+
+def test_index_page(client):
+    """
+        Test / endpoint to ensure it returns the correct HTML content.
+    """
+
+    # API call
+    response = client.get('/')
+    data = response.data.decode('utf-8')
+
+    assert response.status_code == 200
+    assert "<span class=\"navbar-brand mb-0 h1\">🛠️ Flask Microservice - Control Panel</span>" in data
