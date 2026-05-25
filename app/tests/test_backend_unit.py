@@ -14,6 +14,13 @@ class FakeUser:
             "email": self.email
         }
 
+# generator to simulate time.time() increasing by 10 seconds on each call
+def time_side_effect():
+    t = 0.0
+    while True:
+        yield t
+        t += 1000.0
+
 """   CRUD Tests on users   """   
 
 def test_get_users(client, mocker):
@@ -378,7 +385,7 @@ def test_delete_user_error(client, mocker):
     assert response.status_code == 500
     assert response.get_json()["error"] == "DB error during deletion"
 
-'''   Extra features tests   '''
+"""   Extra features tests   """
 
 def test_health_check_success(client, mocker):
     """
@@ -415,3 +422,71 @@ def test_health_check_db_failure(client, mocker):
     # assertion: status code 503 and response body contains "unhealthy"
     assert response.status_code == 503
     assert response.get_json()["status"] == "unhealthy"
+
+
+
+def test_panic_button(client):
+    """
+        Test /api/panic endpoint to ensure it simulates a server crash and raises an exception.
+    """
+    
+    with pytest.raises(Exception, match="Simulated server crash for testing purposes"):
+        client.get('/api/panic')
+
+
+
+def test_log_storm_default(client):
+    """
+        Test /api/log_storm endpoint to ensure it generates 100 log messages.
+    """
+
+    # API call
+    response = client.get('/api/log_storm')
+    data = response.get_json()
+
+    assert response.status_code == 200
+    assert data["message"] == "Generati 100 log strutturati"
+
+def test_log_storm_custom_count(client):
+    """
+        Test /api/log_storm endpoint to ensure it generates a custom number of log messages.
+    """
+
+    # API call with custom count
+    response = client.get('/api/log_storm?count=50')
+    data = response.get_json()
+
+    assert response.status_code == 200
+    assert data["message"] == "Generati 50 log strutturati"
+
+
+
+def test_stress_cpu(client, mocker):
+    """
+        Test /api/stress_cpu endpoint to ensure it simulates CPU stress with default duration (5 seconds)
+    """
+
+    # mock of time.time
+    mock_time = mocker.patch('src.main.time.time', side_effect=time_side_effect())
+
+    # API call
+    response = client.get('/api/stress_cpu')
+    data = response.get_json()
+
+    assert response.status_code == 200
+    assert data["message"] == "CPU stress test completed after 5 seconds"
+
+def test_stress_cpu_custom_duration(client, mocker):
+    """
+        Test /api/stress_cpu endpoint to ensure it simulates CPU stress with a custom duration
+    """
+
+    # mock of time.time
+    mock_time = mocker.patch('src.main.time.time', side_effect=time_side_effect())
+
+    # API call with custom duration
+    response = client.get('/api/stress_cpu?duration=100000')
+    data = response.get_json()
+
+    assert response.status_code == 200
+    assert data["message"] == "CPU stress test completed after 100000 seconds"
