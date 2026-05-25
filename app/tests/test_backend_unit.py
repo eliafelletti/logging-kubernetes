@@ -2,11 +2,16 @@ import pytest
 from werkzeug.exceptions import NotFound
 
 class FakeUser:
+    def __init__(self):
+        self.id = 1
+        self.username = "testuser"
+        self.email = "test@mail.com"
+    
     def __todict__(self):
         return {
-            "id": 1,
-            "username": "testuser",
-            "email": "test@mail.com"
+            "id": self.id,
+            "username": self.username,
+            "email": self.email
         }
 
 def test_health_check_success(client, mocker):
