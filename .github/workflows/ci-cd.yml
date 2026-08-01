@@ -35,6 +35,8 @@ jobs:
       
       - name: Test with pytest
         env:
+          DB_PASSWORD: test_password_dummy
+          SECRET_KEY: test_secret_dummy
           PYTHONPATH: app 
         run: |
           pytest
