@@ -50,7 +50,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./Dockerfile
+          context: ./app
+          file: ./app/Dockerfile
           push: true
-          tags: eliafelletti/flask-thesis-app:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/flask-thesis-app:latest
