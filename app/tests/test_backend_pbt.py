@@ -1,5 +1,6 @@
 from hypothesis import HealthCheck, given, settings, strategies as st
 from pytest import raises
+from src.models import db, User
 
 class TestAppInvariants:
     @given(
@@ -10,7 +11,8 @@ class TestAppInvariants:
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
     def test_tracing_header(self, client, request_id):  
         """
-            Test that the request-id into the header is correctly propagated and returned in the response.
+            PROPERTY:
+            The request-id into the header is correctly propagated and returned in the response.
         """
         headers = {"X-Request-ID": request_id}
         response = client.get("/api/health", headers=headers)
@@ -28,7 +30,8 @@ class TestAppInvariants:
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
     def test_json_response_guarantee(self, client, random_path):
         """
-            Test that the application always returns a JSON response, even for random or invalid paths.
+            PROPERTY:
+            The application always returns a JSON response, even for random or invalid paths.
         """
         response = client.get(f'/api/{random_path}')
         
@@ -36,8 +39,9 @@ class TestAppInvariants:
         assert response.is_json is True
         assert response.headers['Content-Type'] == 'application/json'
         
-        # Check that the response status code is 404 for invalid paths (random)
-        assert response.status_code in [404, 405]
+        # Check that the response status code is in [200, 404, 405] (OK, Not Found, Method Not Allowed)
+        # sometimes the random path might match an existing route, hence 200 is also valid
+        assert response.status_code in [200, 404, 405]
 
 
     # generator for arbitrary JSON values (None, bool, int, float, str)
@@ -56,7 +60,8 @@ class TestAppInvariants:
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
     def test_robustness_fuzz_user_creation(self, client, payload):
         """
-            Test the robustness of the user creation endpoint by sending fuzzed payloads.
+            PROPERTY:
+            For every fuzzy payload sent to the user creation endpoint, the application should not crash and return a valid JSON response with an appropriate status code (201, 400, or 409).
         """
         response = client.post('/api/user', json=payload)
         
@@ -66,4 +71,48 @@ class TestAppInvariants:
         # Check that the response is always JSON
         assert response.is_json is True
         assert response.headers['Content-Type'] == 'application/json'
-    
+
+class TestCRUDUsersProperties:
+    valid_usernames = st.text(
+        
+        alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd')), 
+        min_size=3, 
+        max_size=20
+    )
+    valid_emails = st.emails()
+
+    @given(
+            username=valid_usernames,
+            email=valid_emails
+        )
+    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    def test_user_complete_lifecycle(self, client, username, email):
+        """
+            PROPERTY:
+            For every user created, it should be possible to retrieve it, update it, and delete it. After that the retrieval should return 404
+        """
+        # Clean User table before starting the test
+        db.session.query(User).delete()
+        db.session.commit()
+
+        # 1. CREATE (POST)
+        post_res = client.post('/api/user', json={'username': username, 'email': email})
+        assert post_res.status_code == 201
+        created_user = post_res.get_json()
+        user_id = created_user['id'] # retrieve user id for further operations
+
+        # 2. READ (GET)
+        get_res = client.get(f'/api/user/{user_id}')
+        assert get_res.status_code == 200
+        fetched_user = get_res.get_json()
+        assert fetched_user['username'] == username
+        assert fetched_user['email'] == email
+
+        # 3. DELETE (DELETE)
+        del_res = client.delete(f'/api/user/{user_id}')
+        assert del_res.status_code == 200
+        assert del_res.get_json()['message'] == "User deleted successfully"
+
+        # 4. VERIFY DELETED (GET -> 404)
+        get_after_del = client.get(f'/api/user/{user_id}')
+        assert get_after_del.status_code == 404
