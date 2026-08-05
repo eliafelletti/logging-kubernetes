@@ -134,7 +134,7 @@ def get_user(user_id):
     ''' API endpoint to retrieve a specific user by ID '''
 
     # helpful method to get a user or return a 404 error if not found
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
 
     return jsonify(user.__todict__()), 200
 
@@ -169,7 +169,7 @@ def create_user():
 def update_user(user_id):
     ''' API endpoint to update an existing user's information '''
 
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     data = request.json
 
     if not data:
@@ -199,7 +199,7 @@ def update_user(user_id):
 def delete_user(user_id):
     ''' API endpoint to delete a user by ID '''
 
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
 
     try:
         db.session.delete(user)
