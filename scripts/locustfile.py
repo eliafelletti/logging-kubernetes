@@ -19,9 +19,9 @@ class ThesisChaosUser(HttpUser):
         count = random.randint(10, 50)
         self.client.get(f"/api/log_storm?count={count}")
 
-    @task(8)   # Peso 8: Ancora meno frequente (pesa sulla CPU)
+    @task(2)   # Peso 2: Ancora meno frequente (pesa sulla CPU)
     def stress_cpu(self):
-        self.client.get("/api/stress_cpu?duration=20")
+        self.client.get("/api/stress_cpu?duration=2")
 
     @task(1)   # Peso 1: Raro (il Panic fa restituire 500)
     def trigger_panic(self):
