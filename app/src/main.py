@@ -94,7 +94,12 @@ def before_cursor_execute(conn, cursor, statement, parameters, context, executem
 @app.errorhandler(404)
 def resource_not_found(e):
     logger.warning("⚠️ 404 Not Found triggered", extra=getattr(g, 'log_context', {}))
-    return jsonify({"error": "Risorsa non trovata"}), 404
+    return jsonify({"error": "Resource not found"}), 404
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    logger.warning("⚠️ 405 Method Not Allowed triggered", extra=getattr(g, 'log_context', {}))
+    return jsonify({"error": "Method not allowed"}), 405
 
 
 '''

@@ -105,7 +105,7 @@ def test_get_user_by_id_not_found(client, mocker):
     mock_query.get_or_404.assert_called_once_with(999999999999)
 
     assert response.status_code == 404
-    assert response.get_json()["error"] == "Risorsa non trovata"
+    assert response.get_json()["error"] == "Resource not found"
 
 
 
@@ -227,7 +227,7 @@ def test_update_user_not_found(client, mocker):
     })
 
     assert response.status_code == 404  
-    assert response.get_json()["error"] == "Risorsa non trovata"
+    assert response.get_json()["error"] == "Resource not found"
 
 def test_update_user_no_data(client, mocker):
     '''
@@ -358,7 +358,7 @@ def test_delete_user_not_found(client, mocker):
     response = client.delete('/api/user/999999999999')
 
     assert response.status_code == 404
-    assert response.get_json()["error"] == "Risorsa non trovata"
+    assert response.get_json()["error"] == "Resource not found"
 
 def test_delete_user_error(client, mocker):
     '''
