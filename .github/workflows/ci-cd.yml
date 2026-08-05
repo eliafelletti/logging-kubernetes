@@ -7,6 +7,7 @@ on:
       - 'README.md'
       - 'docs/**'
       - 'k8s/**'
+      - 'scripts/**'
       - '.gitignore'
 
 jobs:
