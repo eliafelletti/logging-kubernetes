@@ -68,6 +68,39 @@ def test_get_users_delay(client, mocker):
     assert response.status_code == 200
     assert data[0]["username"] == "testuser"
     assert data[0]["email"] == "test@mail.com"
+
+def test_get_user_delay_out_of_bounds(client):
+    """
+        Test /api/users endpoint with a delay value exceeding max threshold (>10). 
+    """
+
+    # API call with out-of-bounds delay
+    response = client.get('/api/users?delay=15')
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Delay parameter must be between 0 and 10"
+
+def test_get_user_delay_negative(client):
+    """
+        Test /api/users endpoint with a negative delay value (<0). 
+    """
+
+    # API call with negative delay
+    response = client.get('/api/users?delay=-1')
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Delay parameter must be between 0 and 10"
+
+def test_get_user_delay_invalid_type(client):
+    """
+        Test /api/users endpoint with a non-integer delay parameter. 
+    """
+
+    # API call with invalid delay type (string)
+    response = client.get('/api/users?delay=abc')
+    
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Delay parameter must be an integer"
   
 def test_get_user_by_id(client, mocker):
     '''
@@ -459,6 +492,29 @@ def test_log_storm_custom_count(client):
     assert response.status_code == 200
     assert data["message"] == "Generati 50 log strutturati"
 
+def test_log_storm_count_out_of_bounds(client):
+    """
+        Test /api/log_storm endpoint with count exceeding upper limit (>1000).
+    """
+
+    # API call with out-of-bounds count
+    response = client.get('/api/log_storm?count=1500')
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Count parameter must be between 0 and 1000"
+
+
+def test_log_storm_count_invalid_type(client):
+    """ 
+        Test /api/log_storm endpoint with a non-integer count parameter. 
+    """
+
+    # API call with invalid count type (string)
+    response = client.get('/api/log_storm?count=not_a_number')
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Count parameter must be an integer"
+
 
 
 def test_stress_cpu(client, mocker):
@@ -490,6 +546,29 @@ def test_stress_cpu_custom_duration(client, mocker):
 
     assert response.status_code == 200
     assert data["message"] == "CPU stress test completed after 10 seconds"
+
+def test_stress_cpu_out_of_bounds_duration(client):
+    """
+        Test /api/stress_cpu endpoint with duration outside valid limits (1-20s). 
+    """
+
+    # API call with out-of-bounds duration
+    response = client.get('/api/stress_cpu?duration=60')
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Duration parameter must be between 1 and 20 seconds"
+
+
+def test_stress_cpu_invalid_type_duration(client):
+    """
+        Test /api/stress_cpu endpoint with a non-integer duration parameter.
+    """
+
+    # API call with invalid duration type (string)
+    response = client.get('/api/stress_cpu?duration=invalid_val')
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Duration parameter must be an integer"
 
 def test_index_page(client):
     """
