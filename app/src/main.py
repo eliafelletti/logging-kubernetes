@@ -277,7 +277,7 @@ def log_storm():
             # Boundary check: evita numeri negativi o tempeste di log eccessive
             if count < 0 or count > 1000:
                 logger.warning(f"⚠️ Out of bound count parameter received: {count}.", extra=getattr(g, 'log_context', {}))
-                return jsonify({'error': 'Il parametro count deve essere compreso tra 0 e 1000'}), 400
+                return jsonify({'error': 'Count parameter must be between 0 and 1000'}), 400
 
         except (ValueError, TypeError, OverflowError):
             # Cattura stringhe non valide ("abc"), float, NaN, Inf o interi giganti
