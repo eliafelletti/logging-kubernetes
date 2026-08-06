@@ -42,7 +42,8 @@ jobs:
         env:
           FLASK_ENV: testing
           SQLALCHEMY_DATABASE_URI: "sqlite:///:memory:"
-          SECRET_KEY: test_secret_dummy
+          DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+          SECRET_KEY: ${{ secrets.TEST_SECRET_KEY }}
           PYTHONPATH: app
         run: |
           python app/src/main.py &
@@ -52,7 +53,8 @@ jobs:
         env:
           FLASK_ENV: testing
           SQLALCHEMY_DATABASE_URI: "sqlite:///:memory:"
-          SECRET_KEY: test_secret_dummy
+          DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+          SECRET_KEY: ${{ secrets.TEST_SECRET_KEY }}
           PYTHONPATH: app
           MINIKUBE_URL: http://127.0.0.1:5000
         run: |
