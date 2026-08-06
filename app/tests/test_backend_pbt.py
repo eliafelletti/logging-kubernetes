@@ -1,4 +1,4 @@
-from hypothesis import HealthCheck, given, settings, strategies as st
+from hypothesis import HealthCheck, given, settings, strategies as st, assume
 from pytest import raises
 from src.models import db, User
 
@@ -125,9 +125,9 @@ class TestCRUDUsersProperties:
 
 
     @given(
-                username=valid_usernames,
-                email=valid_emails
-            )
+            username=valid_usernames,
+            email=valid_emails
+        )
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
     def test_db_unique_constraint(self, client, username, email):
         """
@@ -151,3 +151,40 @@ class TestCRUDUsersProperties:
         post_res3 = client.post('/api/user', json={'username': f"new_{username}", 'email': email})
         assert post_res3.status_code == 409
         assert post_res3.get_json()['error'] == "Username or email already exists (or DB error)"
+
+
+    @given(
+            user1_name=valid_usernames,
+            user1_email=valid_emails,
+            user2_name=valid_usernames,
+            user2_email=valid_emails
+        )
+    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    def test_update_unique_constraint(self, client, user1_name, user1_email, user2_name, user2_email):
+        """
+            PROPERTY:
+            The database enforces unique constraints on username and email during updates. Attempting to update a user to have an existing username or email should return a 409 Conflict status code.
+        """
+        # Assume that the two users have different usernames and emails
+        # This is necessary to prevent Hypothesis from generating the same username/email for both users, which would make the test invalid
+        assume(user1_name != user2_name)
+        assume(user1_email != user2_email)
+
+        # Clean User table before starting the test
+        db.session.query(User).delete()
+        db.session.commit()
+        db.session.expunge_all()  # Clear the session to avoid SQLAlchemy Identity Map stale data
+
+        # Create User 1 and User 2
+        post_res1 = client.post('/api/user', json={'username': user1_name, 'email': user1_email})
+        assert post_res1.status_code == 201
+
+        post_res2 = client.post('/api/user', json={'username': user2_name, 'email': user2_email})
+        assert post_res2.status_code == 201
+        
+        user1_id = post_res1.get_json()['id']
+
+        # User 1 tries to steal User 2's email
+        put_res = client.put(f'/api/user/{user1_id}', json={'username': user1_name, 'email': user2_email})
+        
+        assert put_res.status_code == 409
