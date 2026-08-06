@@ -74,7 +74,6 @@ class TestAppInvariants:
 
 class TestCRUDUsersProperties:
     valid_usernames = st.text(
-        
         alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd')), 
         min_size=3, 
         max_size=20
@@ -116,3 +115,32 @@ class TestCRUDUsersProperties:
         # 4. VERIFY DELETED (GET -> 404)
         get_after_del = client.get(f'/api/user/{user_id}')
         assert get_after_del.status_code == 404
+
+
+    @given(
+                username=valid_usernames,
+                email=valid_emails
+            )
+    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    def test_db_unique_constraint(self, client, username, email):
+        """
+            PROPERTY:
+            The database enforces unique constraints on username and email. Attempting to create a user with an existing username or email should return a 409 Conflict status code.
+        """
+        # Clean User table before starting the test
+        db.session.query(User).delete()
+        db.session.commit()
+
+        # Create the first user
+        post_res1 = client.post('/api/user', json={'username': username, 'email': email})
+        assert post_res1.status_code == 201
+
+        # Attempt to create a second user with the same username
+        post_res2 = client.post('/api/user', json={'username': username, 'email': f"new_{email}"})
+        assert post_res2.status_code == 409
+        assert post_res2.get_json()['error'] == "Username or email already exists (or DB error)"
+
+        # Attempt to create a second user with the same email
+        post_res3 = client.post('/api/user', json={'username': f"new_{username}", 'email': email})
+        assert post_res3.status_code == 409
+        assert post_res3.get_json()['error'] == "Username or email already exists (or DB error)"
