@@ -485,11 +485,11 @@ def test_stress_cpu_custom_duration(client, mocker):
     mock_time = mocker.patch('src.main.time.time', side_effect=time_side_effect())
 
     # API call with custom duration
-    response = client.get('/api/stress_cpu?duration=100000')
+    response = client.get('/api/stress_cpu?duration=10')
     data = response.get_json()
 
     assert response.status_code == 200
-    assert data["message"] == "CPU stress test completed after 100000 seconds"
+    assert data["message"] == "CPU stress test completed after 10 seconds"
 
 def test_index_page(client):
     """
