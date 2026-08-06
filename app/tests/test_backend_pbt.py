@@ -107,12 +107,19 @@ class TestCRUDUsersProperties:
         assert fetched_user['username'] == username
         assert fetched_user['email'] == email
 
-        # 3. DELETE (DELETE)
+        # 3. UPDATE (PUT)
+        new_email = f"updated_{email}"
+        put_res = client.put(f'/api/user/{user_id}', json={'email': new_email})
+        assert put_res.status_code == 200
+        updated_user = put_res.get_json()
+        assert updated_user['email'] == new_email
+
+        # 4. DELETE (DELETE)
         del_res = client.delete(f'/api/user/{user_id}')
         assert del_res.status_code == 200
         assert del_res.get_json()['message'] == "User deleted successfully"
 
-        # 4. VERIFY DELETED (GET -> 404)
+        # 5. VERIFY DELETED (GET -> 404)
         get_after_del = client.get(f'/api/user/{user_id}')
         assert get_after_del.status_code == 404
 
