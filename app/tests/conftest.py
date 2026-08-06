@@ -19,3 +19,9 @@ def client():
 
         db.session.remove()  # clean up the session after tests
         db.drop_all()  # drop tables after tests
+
+@pytest.fixture(scope='session')
+def minikube_url():
+    ''' Fixture to provide the Minikube URL for testing purposes exposed via fort-fotward '''
+
+    return "http://my-thesis-app.local:8080/"
