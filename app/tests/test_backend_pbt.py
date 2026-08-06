@@ -54,6 +54,7 @@ class TestAppInvariants:
     )
     # fuzz JSON dictionary
     fuzz_payload = st.dictionaries(keys=st.text(), values=json_values)
+
     @given(
             payload = fuzz_payload
         )
@@ -67,6 +68,36 @@ class TestAppInvariants:
         
         # Check that the response status code is either 201 (Created), 400 (Bad Request) or 409 (Conflict)
         assert response.status_code in [201, 400, 409]
+        
+        # Check that the response is always JSON
+        assert response.is_json is True
+        assert response.headers['Content-Type'] == 'application/json'
+
+
+    @given(
+                username = st.text(alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd')), min_size=3, max_size=20),
+                email = st.emails(),
+                payload = fuzz_payload
+            )
+    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    def test_robustness_fuzz_user_update(self, client, payload, username, email):
+        """
+            PROPERTY:
+            For every fuzzy payload sent to the user update endpoint, the application should not crash and return a valid JSON response with an appropriate status code (200, 201, 400, or 409).
+        """
+        # Clean User table before starting the test
+        db.session.query(User).delete()
+        db.session.commit()
+        db.session.expunge_all()  # Clear the session to avoid SQLAlchemy Identity Map stale data
+
+        # Create a valid user to update
+        res_post = client.post('/api/user', json={'username': username, 'email': email})
+        assert res_post.status_code == 201
+
+        response = client.put('/api/user/1', json=payload)
+        
+        # Check that the response status code is either 201 (Created), 400 (Bad Request) or 409 (Conflict)
+        assert response.status_code in [200, 201, 400, 409]
         
         # Check that the response is always JSON
         assert response.is_json is True
@@ -129,10 +160,10 @@ class TestCRUDUsersProperties:
             email=valid_emails
         )
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
-    def test_db_unique_constraint(self, client, username, email):
+    def test_create_unique_constraint(self, client, username, email):
         """
             PROPERTY:
-            The database enforces unique constraints on username and email. Attempting to create a user with an existing username or email should return a 409 Conflict status code.
+            The database enforces unique constraints on username and email during creation. Attempting to create a user with an existing username or email should return a 409 Conflict status code.
         """
         # Clean User table before starting the test
         db.session.query(User).delete()
