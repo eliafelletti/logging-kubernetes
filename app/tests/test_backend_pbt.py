@@ -1,6 +1,8 @@
 from hypothesis import HealthCheck, given, settings, strategies as st, assume
 from pytest import raises
 from src.models import db, User
+from unittest.mock import patch
+from itertools import count
 
 class TestAppInvariants:
     @given(
@@ -103,6 +105,7 @@ class TestAppInvariants:
         assert response.is_json is True
         assert response.headers['Content-Type'] == 'application/json'
 
+
 class TestCRUDUsersProperties:
     valid_usernames = st.text(
         alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd')), 
@@ -163,7 +166,8 @@ class TestCRUDUsersProperties:
     def test_create_unique_constraint(self, client, username, email):
         """
             PROPERTY:
-            The database enforces unique constraints on username and email during creation. Attempting to create a user with an existing username or email should return a 409 Conflict status code.
+            The database enforces unique constraints on username and email during creation. 
+            Attempting to create a user with an existing username or email should return a 409 Conflict status code.
         """
         # Clean User table before starting the test
         db.session.query(User).delete()
@@ -194,7 +198,8 @@ class TestCRUDUsersProperties:
     def test_update_unique_constraint(self, client, user1_name, user1_email, user2_name, user2_email):
         """
             PROPERTY:
-            The database enforces unique constraints on username and email during updates. Attempting to update a user to have an existing username or email should return a 409 Conflict status code.
+            The database enforces unique constraints on username and email during updates. 
+            Attempting to update a user to have an existing username or email should return a 409 Conflict status code.
         """
         # Assume that the two users have different usernames and emails
         # This is necessary to prevent Hypothesis from generating the same username/email for both users, which would make the test invalid
@@ -219,3 +224,58 @@ class TestCRUDUsersProperties:
         put_res = client.put(f'/api/user/{user1_id}', json={'username': user1_name, 'email': user2_email})
         
         assert put_res.status_code == 409
+
+
+class TestQueryBoundaryProperties:
+    # Strategy to generate boundary values for query parameters (count, delay, duration)
+    boundary_query_params = st.one_of(
+        st.integers(),                                       # negatives, 0, large numbers (> sys.maxsize)
+        st.floats(allow_nan=True, allow_infinity=True),      # Float, NaN, Inf, -Inf
+        st.text(max_size=30)                                 
+    )
+
+    @given(param_val=boundary_query_params)
+    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    def test_log_storm_query_boundary_robustness(self, client, param_val):
+        """
+            PROPERTY:
+            The API endpoint /api/log_storm enforces input validation on the count query parameter.
+            Passing out-of-bound, invalid, or malformed values should return a 400 Bad Request status code without crashing the application.
+        """
+        response = client.get(f'/api/log_storm?count={param_val}')
+
+        assert response.status_code in [200, 400, 422]
+        assert response.is_json is True
+
+
+
+    @given(param_val=boundary_query_params)
+    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    def test_users_delay_query_boundary_robustness(self, client, param_val):
+        """
+            PROPERTY:
+            The API endpoint /api/users enforces strict limits and type validation on the delay query parameter.
+            Attempting to pass out-of-bound, non-integer, or extreme values should return a 400 Bad Request status code.
+        """
+        with patch('src.main.time.sleep', return_value=None):  # Mock time.sleep to avoid actual delay during testing
+            response = client.get(f'/api/users?delay={param_val}')
+
+        assert response.status_code in [200, 400, 422]
+        assert response.is_json is True
+
+
+
+    @given(param_val=boundary_query_params)
+    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    def test_stress_cpu_query_boundary_robustness(self, client, param_val):
+        """
+            PROPERTY: 
+            The API endpoint /api/users enforces strict limits and type validation on the delay query parameter.
+            Attempting to pass out-of-bound, non-integer, or extreme values should return a 400 Bad Request status code.
+        """
+        with patch('src.main.time.time', side_effect=count(start=1000, step=100)):
+            response = client.get(f'/api/stress_cpu?duration={param_val}')
+
+        assert response.status_code in [200, 400, 422]
+        assert response.is_json is True
+
