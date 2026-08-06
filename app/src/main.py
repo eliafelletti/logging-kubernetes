@@ -119,10 +119,27 @@ def index():
 def get_users():
     ''' API endpoint to retrieve all users, with support for latency simulation '''
 
-    delay = request.args.get('delay', default=0, type=int)
-    if delay > 0:
-        logger.warning(f"⏳ Simulating latency of {delay} seconds for testing purposes.", extra=g.log_context)
-        time.sleep(delay)
+    raw_delay = request.args.get('delay', None)
+
+    if raw_delay is not None:
+        try:
+            # Try to convert the delay parameter to an integer
+            delay = int(raw_delay)
+
+            # Check if the delay is within the allowed range (0-10 seconds)
+            if delay < 0 or delay > 10:
+                logger.warning(f"⚠️ Out of bound delay parameter received: {delay}. Ignoring.", extra=getattr(g, 'log_context', {}))
+                return jsonify({'error': 'Delay parameter must be between 0 and 10'}), 400
+
+            # If delay is valid and greater than 0, simulate latency
+            if delay > 0:
+                logger.warning(f"⏳ Simulating latency of {delay} seconds for testing purposes.", extra=getattr(g, 'log_context', {}))
+                time.sleep(delay)
+
+        except (ValueError, TypeError, OverflowError):
+            # Catch any exceptions that occur during conversion and log a warning
+            logger.warning(f"⚠️ Not Integer delay parameter received: {raw_delay}. Ignoring.", extra=getattr(g, 'log_context', {}))
+            return jsonify({'error': 'Delay parameter must be an integer'}), 400
 
     users = User.query.all()
 
@@ -247,7 +264,25 @@ def trigger_panic():
 @app.route('/api/log_storm', methods=['GET'])
 def log_storm():
     ''' API endpoint to simulate a log storm for testing Loki ingestion capabilities '''
-    count = request.args.get('count', default=100, type=int)
+    raw_count = request.args.get('count', None)
+
+    # Se il parametro non viene passato nell'URL, usiamo il valore di default 100
+    if raw_count is None:
+        count = 100
+    else:
+        try:
+            # Tenta la conversione esplicita in intero
+            count = int(raw_count)
+            
+            # Boundary check: evita numeri negativi o tempeste di log eccessive
+            if count < 0 or count > 1000:
+                logger.warning(f"⚠️ Out of bound count parameter received: {count}.", extra=getattr(g, 'log_context', {}))
+                return jsonify({'error': 'Il parametro count deve essere compreso tra 0 e 1000'}), 400
+
+        except (ValueError, TypeError, OverflowError):
+            # Cattura stringhe non valide ("abc"), float, NaN, Inf o interi giganti
+            logger.warning(f"⚠️ Invalid count parameter type received: {raw_count}.", extra=getattr(g, 'log_context', {}))
+            return jsonify({'error': 'Count parameter must be an integer'}), 400
 
     logger.info(f"🌪️ Starting log storm: {count} lines", extra=g.log_context)
 
@@ -268,7 +303,22 @@ def log_storm():
 @app.route(('/api/stress_cpu'), methods=['GET'])
 def stress_cpu():
     ''' API endpoint to simulate CPU stress for testing auto-scaling and performance monitoring '''
-    duration = request.args.get('duration', default=5, type=int)
+    raw_duration = request.args.get('duration', None)
+
+    if raw_duration is None:
+        duration = 5
+    else:
+        try:
+            duration = int(raw_duration)
+
+            # Boundary check: limits 
+            if duration < 1 or duration > 20:
+                logger.warning(f"⚠️ Out of bound duration parameter received: {duration}.", extra=getattr(g, 'log_context', {}))
+                return jsonify({'error': 'Duration parameter must be between 1 and 20 seconds'}), 400
+
+        except (ValueError, TypeError, OverflowError):
+            logger.warning(f"⚠️ Invalid duration parameter type received: {raw_duration}.", extra=getattr(g, 'log_context', {}))
+            return jsonify({'error': 'Duration parameter must be an integer'}), 400
     end_time = time.time() + duration
 
     logger.warning(f"🔥 Starting CPU stress test for {duration} seconds", extra=g.log_context)
