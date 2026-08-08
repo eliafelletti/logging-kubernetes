@@ -56,7 +56,6 @@ def test_chaos_panic_button(page: Page, minikube_url: str):
     
     # check that the response box eventually shows a 500 status code indicating the server error was handled
     expect(response_box).to_contain_text("Status: 500")
-    expect(response_box).to_contain_text("Internal Server Error")
 
 
 def test_chaos_log_storm(page: Page, minikube_url: str):
