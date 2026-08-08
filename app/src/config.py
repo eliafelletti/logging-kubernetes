@@ -29,6 +29,9 @@ class Config:
 
     # SQLAlchemy connection string
     # Format: postgresql://username:password@host:port/database
-    SQLALCHEMY_DATABASE_URI = f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        'SQLALCHEMY_DATABASE_URI',
+        f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
