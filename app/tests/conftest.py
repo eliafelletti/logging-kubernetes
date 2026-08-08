@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from src.config import Config
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # Use in-memory SQLite database for testing
@@ -24,4 +26,4 @@ def client():
 def minikube_url():
     ''' Fixture to provide the Minikube URL for testing purposes exposed via fort-fotward '''
 
-    return "http://my-thesis-app.local:8080/"
+    return os.getenv("MINIKUBE_URL", "http://my-thesis-app.local:8080/")
