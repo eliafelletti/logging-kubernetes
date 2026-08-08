@@ -145,19 +145,32 @@
 
     // Funzione generica per chiamare le API del Chaos Panel
     async function callApi(endpoint, method) {
-        const responseBox = document.getElementById('api-response');
-        responseBox.textContent = `Chiamata in corso verso ${endpoint}...\n`;
+    const responseBox = document.getElementById('api-response');
+    responseBox.textContent = `Chiamata in corso verso ${endpoint}...\n`;
+
+    try {
+        const res = await fetch(endpoint, { method: method });
         
+        // Read the response as text first to handle both JSON and non-JSON responses
+        const rawText = await res.text();
+        let data;
+
         try {
-            const res = await fetch(endpoint, { method: method });
-            let data;
-            try { data = await res.json(); } catch(e) { data = await res.text(); }
-            
-            responseBox.textContent = `Status: ${res.status}\n\n` + JSON.stringify(data, null, 2);
-        } catch (error) {
-            responseBox.textContent = `Errore di rete: ${error}`;
+            // Try to parse the response as JSON
+            data = JSON.parse(rawText);
+        } catch (e) {
+            // 3. If JSON parsing fails, treat it as plain text
+            data = rawText;
         }
+
+        // Display the response depending on its type
+        const output = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        
+        responseBox.textContent = `Status: ${res.status}\n\n${output}`;
+    } catch (error) {
+        responseBox.textContent = `Errore di rete: ${error}`;
     }
+}
 
     // Carica la tabella utenti (ora con supporto al delay)
     async function loadUsers() {
