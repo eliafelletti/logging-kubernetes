@@ -219,17 +219,20 @@ def delete_user(user_id):
     user = User.query.get_or_404(user_id)
 
     try:
+        deleted_username = user.username  # Store username for logging after deletion
+        deleted_user_id = user.id  # Store user ID for logging after deletion
+
         db.session.delete(user)
         db.session.commit()
 
-        logger.warning(f"✅ User deleted successfully: {user.username}", extra={**g.log_context, "user_id": user.id})
+        logger.warning(f"✅ User deleted successfully: {deleted_username}", extra={**g.log_context, "user_id": deleted_user_id})
 
         return jsonify({'message': 'User deleted successfully'}), 200
     except Exception as e:
         db.session.rollback() # crucial for maintaining database integrity in case of errors -> resilient design
         logger.error("❌ Errore database durante eliminazione utente", extra={**g.log_context, "db_error": str(e)})
 
-        return jsonify({'error': 'DB error during deletion'}), 500
+        return jsonify({'error': f'DB error during deletion: {str(e)}'}), 500
     
 
 '''
