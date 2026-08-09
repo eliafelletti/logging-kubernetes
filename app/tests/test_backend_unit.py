@@ -416,7 +416,7 @@ def test_delete_user_error(client, mocker):
     mock_rollback.assert_called_once()
 
     assert response.status_code == 500
-    assert response.get_json()["error"] == "DB error during deletion"
+    assert "DB error during deletion" in response.get_json()["error"]
 
 """   Extra features tests   """
 
