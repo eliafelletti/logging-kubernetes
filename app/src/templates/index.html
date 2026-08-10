@@ -90,13 +90,23 @@
                         🔴 <b>Panic:</b> Simula Crash Server (500 Error)
                     </button>
                     
-                    <button onclick="callApi('/api/log_storm?count=50', 'GET')" class="btn btn-info text-start text-white">
-                        ⛈️ <b>Log Storm:</b> Genera 50 log per Loki
-                    </button>
+                    <!-- Input Group dinamico per Log Storm -->
+                    <div class="input-group">
+                        <button onclick="triggerLogStorm()" class="btn btn-info text-start text-white flex-grow-1">
+                            ⛈️ <b>Log Storm:</b> Genera log
+                        </button>
+                        <span class="input-group-text bg-light text-muted border-start-0" style="font-size: 0.85rem;">Quantità</span>
+                        <input type="number" id="logCount" class="form-control text-center" value="50" min="1" max="500" style="max-width: 80px;">
+                    </div>
                     
-                    <button onclick="callApi('/api/stress_cpu?duration=5', 'GET')" class="btn btn-dark text-start">
-                        🔥 <b>CPU Stress:</b> Carico Computazionale (Prometheus)
-                    </button>
+                    <!-- Input Group dinamico per CPU Stress -->
+                    <div class="input-group">
+                        <button onclick="triggerCpuStress()" class="btn btn-dark text-start flex-grow-1">
+                            🔥 <b>CPU Stress:</b> Carico CPU
+                        </button>
+                        <span class="input-group-text bg-light text-muted border-start-0" style="font-size: 0.85rem;">Secondi</span>
+                        <input type="number" id="cpuDuration" class="form-control text-center" value="5" min="1" max="60" style="max-width: 80px;">
+                    </div>
                 </div>
             </div>
 
@@ -159,7 +169,7 @@
             // Try to parse the response as JSON
             data = JSON.parse(rawText);
         } catch (e) {
-            // 3. If JSON parsing fails, treat it as plain text
+            // If JSON parsing fails, treat it as plain text
             data = rawText;
         }
 
@@ -172,7 +182,27 @@
     }
 }
 
-    // Carica la tabella utenti (ora con supporto al delay)
+    // Trigger dinamico per Log Storm
+    function triggerLogStorm() {
+        const count = document.getElementById('logCount').value;
+        if(count > 0) {
+            callApi(`/api/log_storm?count=${count}`, 'GET');
+        } else {
+            alert("Inserisci un numero valido di log da generare.");
+        }
+    }
+
+    // Trigger dinamico per CPU Stress
+    function triggerCpuStress() {
+        const duration = document.getElementById('cpuDuration').value;
+        if(duration > 0) {
+            callApi(`/api/stress_cpu?duration=${duration}`, 'GET');
+        } else {
+            alert("Inserisci un numero valido di secondi.");
+        }
+    }
+
+    // Carica la tabella utenti (con supporto al delay)
     async function loadUsers() {
         const delay = document.getElementById('delaySelect').value;
         const endpoint = `/api/users${delay > 0 ? '?delay=' + delay : ''}`;

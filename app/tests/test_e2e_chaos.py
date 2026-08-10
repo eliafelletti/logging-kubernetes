@@ -61,9 +61,13 @@ def test_chaos_panic_button(page: Page, minikube_url: str):
 
 def test_chaos_log_storm(page: Page, minikube_url: str):
     """
-        Verify that the 'Log Storm' button completes the request successfully.
+        Verify that the 'Log Storm' button completes the request successfully,
+        taking into account the dynamic input for the log count.
     """
     page.goto(minikube_url)
+    
+    # Verify the input field exists and fill it with a custom value to test the dynamic parameter passing
+    page.fill("#logCount", "15")
     
     storm_btn = page.get_by_role("button", name=re.compile(r"Log Storm", re.IGNORECASE))
     expect(storm_btn).to_be_visible()
@@ -76,9 +80,12 @@ def test_chaos_log_storm(page: Page, minikube_url: str):
 def test_chaos_cpu_stress(page: Page, minikube_url: str):
     """
         Verify that the 'CPU Stress' button invokes the API and waits 
-        correctly for the stress test to complete.
+        correctly for the stress test to complete, using the dynamic duration input.
     """
     page.goto(minikube_url)
+    
+    # Verify the input field exists and set duration to 2 seconds (makes the test faster while still proving it works)
+    page.fill("#cpuDuration", "2")
     
     stress_btn = page.get_by_role("button", name=re.compile(r"CPU Stress", re.IGNORECASE))
     expect(stress_btn).to_be_visible()
@@ -86,5 +93,5 @@ def test_chaos_cpu_stress(page: Page, minikube_url: str):
     
     response_box = page.locator("#api-response")
     
-    # this test will take at least 5 seconds to complete, so we set a longer timeout for the expectation
-    expect(response_box).to_contain_text("Status: 200", timeout=10000)
+    # Since we dynamically set the duration to 2 seconds, a timeout of 8000ms is more than enough
+    expect(response_box).to_contain_text("Status: 200", timeout=8000)
