@@ -1,9 +1,7 @@
-
-"""  CRUD User Tests """
-import re
 import uuid
 from playwright.sync_api import Page, expect
 
+"""  CRUD User Tests """
 
 def test_user_lifecycle_create_edit_delete(page: Page, minikube_url: str):
     """
@@ -80,19 +78,18 @@ def test_user_search(page: Page, minikube_url: str):
     expect(user_row).to_be_visible()
     created_user_id = user_row.locator("td").first.inner_text()
     
-    # 2. TEST: Search for the newly created user
+    # Search for the newly created user
     page.fill("#searchId", created_user_id)
     page.click("#searchUserForm button[type='submit']")
     expect(page.locator("#usersTableBody tr.table-info")).to_be_visible()
     expect(page.locator("#api-response")).to_contain_text("✅ Utente trovato")
     
-    # 3. TEST: Search for a non-existent ID
+    # Search for a non-existent ID
     page.fill("#searchId", "9999999")
     page.click("#searchUserForm button[type='submit']")
     expect(page.locator("#usersTableBody")).to_contain_text("Utente non trovato (404)")
     
-    # 4. TEARDOWN / CLEANUP: Delete the test user
-    # Click the "✖️" button (using its title) to reset the table view and see all users again
+    # 4. TEARDOWN: Delete the test user
     page.locator("button[title='Reset vista']").click()
     
     # Find the row of our test user again and click the delete button (🗑️)
@@ -103,3 +100,74 @@ def test_user_search(page: Page, minikube_url: str):
     
     # Verify the cleanup was successful
     expect(page.locator("#usersTableBody")).not_to_contain_text(unique_username)
+
+def test_users_load_with_delay(page: Page, minikube_url: str):
+    """
+    Verify that selecting a latency delay displays the loading state 
+    and successfully completes after the delay.
+    """
+    page.goto(minikube_url)
+    
+    # Select 1 second delay from the dropdown
+    page.select_option("#delaySelect", "1")
+    page.get_by_role("button", name="🔄 Aggiorna Lista").click()
+    
+    # Check for the temporary loading message
+    response_box = page.locator("#api-response")
+    expect(response_box).to_contain_text("⏳ Caricamento utenti in corso con ritardo di 1 secondi")
+    
+    # Check for the final success message (timeout slightly increased to account for the 1s delay)
+    expect(response_box).to_contain_text("✅ Utenti caricati", timeout=3000)
+
+
+def test_user_duplicate_creation_error(page: Page, minikube_url: str):
+    """
+    Verify that creating a user with already existing credentials 
+    results in an appropriate error message, then clean up.
+    """
+    # Accept dialogs automatically for the cleanup phase
+    page.on("dialog", lambda dialog: dialog.accept())
+    page.goto(minikube_url)
+    
+    # Create a unique user
+    unique_suffix = uuid.uuid4().hex[:8]
+    username = f"dup_{unique_suffix}"
+    email = f"d_{unique_suffix}@test.com"
+    
+    page.fill("#username", username)
+    page.fill("#email", email)
+    page.click("#createUserForm button[type='submit']")
+    expect(page.locator("#api-response")).to_contain_text("Utente creato con successo!")
+    
+    # Try to create the exact same user again
+    page.fill("#username", username)
+    page.fill("#email", email)
+    page.click("#createUserForm button[type='submit']")
+    
+    # Verify the backend rejects the duplicate
+    expect(page.locator("#api-response")).to_contain_text("❌ Errore: Username or email already exists (or DB error)")
+    
+    # TEARDOWN: Delete the user to maintain isolation
+    user_row = page.locator("#usersTableBody tr", has_text=username)
+    user_row.locator("button:has-text('🗑️')").click()
+    
+    expect(page.locator("#api-response")).to_contain_text("User deleted successfully", timeout=3000)
+    expect(page.locator("#usersTableBody")).not_to_contain_text(username)
+
+
+def test_user_creation_empty_form_validation(page: Page, minikube_url: str):
+    """
+    Verify that submitting an empty form is prevented by the browser 
+    and does not trigger an API call.
+    """
+    page.goto(minikube_url)
+    
+    # Ensure fields are empty
+    page.fill("#username", "")
+    page.fill("#email", "")
+    
+    # Try to submit the form
+    page.click("#createUserForm button[type='submit']")
+    
+    # Verify the API response box remains in its default state (no HTTP request was sent)
+    expect(page.locator("#api-response")).to_contain_text("In attesa di comandi...")
