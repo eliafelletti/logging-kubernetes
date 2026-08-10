@@ -95,3 +95,44 @@ def test_chaos_cpu_stress(page: Page, minikube_url: str):
     
     # Since we dynamically set the duration to 2 seconds, a timeout of 8000ms is more than enough
     expect(response_box).to_contain_text("Status: 200", timeout=8000)
+
+def test_chaos_log_storm_out_of_bounds(page: Page, minikube_url: str):
+    """
+        Verify that entering a log count outside the allowed range (e.g. > 1000)
+        is rejected by the backend (400 Bad Request) and the correct error message is shown.
+    """
+    page.goto(minikube_url)
+    
+    # Fill the input with a value greater than the maximum allowed (1000)
+    page.fill("#logCount", "1500")
+    
+    storm_btn = page.get_by_role("button", name=re.compile(r"Log Storm", re.IGNORECASE))
+    storm_btn.click()
+    
+    response_box = page.locator("#api-response")
+    
+    # Check that the API responds with a 400 status
+    expect(response_box).to_contain_text("Status: 400")
+    # Check that the backend's specific error message is displayed
+    expect(response_box).to_contain_text("Count parameter must be between 0 and 1000")
+
+
+def test_chaos_cpu_stress_out_of_bounds(page: Page, minikube_url: str):
+    """
+        Verify that entering a CPU duration outside the allowed range (e.g. > 20)
+        is rejected by the backend (400 Bad Request) and the correct error message is shown.
+    """
+    page.goto(minikube_url)
+    
+    # Fill the input with a value greater than the maximum allowed (20)
+    page.fill("#cpuDuration", "25")
+    
+    stress_btn = page.get_by_role("button", name=re.compile(r"CPU Stress", re.IGNORECASE))
+    stress_btn.click()
+    
+    response_box = page.locator("#api-response")
+    
+    # Check that the API responds with a 400 status
+    expect(response_box).to_contain_text("Status: 400")
+    # Check that the backend's specific error message is displayed
+    expect(response_box).to_contain_text("Duration parameter must be between 1 and 20 seconds")
