@@ -170,11 +170,21 @@ def create_user():
     try:
         new_user = User(username=data['username'], email=data['email'])
         db.session.add(new_user)
+
+        db.session.flush()  # Flush to assign an ID before commit
+
+        # IMPORTANT: Extract data into local variables BEFORE commit().
+        # After commit, SQLAlchemy expires the object. Accessing it would trigger 
+        # a new SELECT query, causing race conditions and false errors under load.
+        user_dict = new_user.__todict__()
+        user_name = new_user.username
+        user_id = new_user.id
+
         db.session.commit()
 
-        logger.info(f"✅ User created successfully: {new_user.username}", extra={**g.log_context, "user_id": new_user.id})
+        logger.info(f"✅ User created successfully: {user_name}", extra={**g.log_context, "user_id": user_id})
 
-        return jsonify(new_user.__todict__()), 201
+        return jsonify(user_dict), 201
     except Exception as e:
         db.session.rollback() # crucial for maintaining database integrity in case of errors -> resilient design
         logger.error("❌ Errore database durante creazione utente", extra={**g.log_context, "db_error": str(e)})
@@ -200,11 +210,20 @@ def update_user(user_id):
         if 'email' in data:
             user.email = data['email']
 
+        db.session.flush() # Flush to check for potential integrity issues before committing
+
+        # IMPORTANT: Extract data into local variables BEFORE commit().
+        # After commit, SQLAlchemy expires the object. Accessing it would trigger 
+        # a new SELECT query, causing race conditions and false errors under load.
+        updated_dict = user.__todict__()
+        updated_name = user.username
+        updated_id = user.id
+
         db.session.commit()
 
-        logger.info(f"✅ User updated successfully: {user.username}", extra={**g.log_context, "user_id": user.id})
+        logger.info(f"✅ User updated successfully: {updated_name}", extra={**g.log_context, "user_id": updated_id})
 
-        return jsonify(user.__todict__()), 200
+        return jsonify(updated_dict), 200
     except Exception as e:
         db.session.rollback() # crucial for maintaining database integrity in case of errors -> resilient design
         logger.error("❌ Errore database durante aggiornamento utente", extra={**g.log_context, "db_error": str(e)})
