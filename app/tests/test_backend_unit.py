@@ -523,7 +523,7 @@ def test_stress_cpu(client, mocker):
     """
 
     # mock of time.time
-    mock_time = mocker.patch('src.main.time.time', side_effect=time_side_effect())
+    mocker.patch('src.main.time.time', side_effect=time_side_effect())
 
     # API call
     response = client.get('/api/stress_cpu')
@@ -538,7 +538,7 @@ def test_stress_cpu_custom_duration(client, mocker):
     """
 
     # mock of time.time
-    mock_time = mocker.patch('src.main.time.time', side_effect=time_side_effect())
+    mocker.patch('src.main.time.time', side_effect=time_side_effect())
 
     # API call with custom duration
     response = client.get('/api/stress_cpu?duration=10')

@@ -63,7 +63,7 @@ def test_user_search(page: Page, minikube_url: str):
 
     page.goto(minikube_url)
     
-    # 1. SETUP: Create a dummy user with UNIQUE data
+    # 1. Create a dummy user with UNIQUE data
     unique_suffix = uuid.uuid4().hex[:8]
     unique_username = f"search_user_{unique_suffix}"
     unique_email = f"search_{unique_suffix}@test.com"
@@ -89,7 +89,7 @@ def test_user_search(page: Page, minikube_url: str):
     page.click("#searchUserForm button[type='submit']")
     expect(page.locator("#usersTableBody")).to_contain_text("Utente non trovato (404)")
     
-    # 4. TEARDOWN: Delete the test user
+    # Delete the test user
     page.locator("button[title='Reset vista']").click()
     
     # Find the row of our test user again and click the delete button (🗑️)
@@ -147,7 +147,7 @@ def test_user_duplicate_creation_error(page: Page, minikube_url: str):
     # Verify the backend rejects the duplicate
     expect(page.locator("#api-response")).to_contain_text("❌ Errore: Username or email already exists (or DB error)")
     
-    # TEARDOWN: Delete the user to maintain isolation
+    # Delete the user to maintain isolation
     user_row = page.locator("#usersTableBody tr", has_text=username)
     user_row.locator("button:has-text('🗑️')").click()
     

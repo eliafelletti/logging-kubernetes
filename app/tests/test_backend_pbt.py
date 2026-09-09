@@ -1,5 +1,4 @@
 from hypothesis import HealthCheck, given, settings, strategies as st, assume
-from pytest import raises
 from src.models import db, User
 from unittest.mock import patch
 from itertools import count

@@ -1,7 +1,6 @@
 import logging
 import sys
 from pythonjsonlogger import jsonlogger
-from datetime import datetime
 
 '''
     This module sets up logging for the application using the python-json-logger library. 

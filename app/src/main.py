@@ -1,7 +1,6 @@
 import time
 import uuid
 import logging
-import math
 from flask import Flask, request, jsonify, render_template, g, has_request_context
 from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
@@ -288,21 +287,21 @@ def log_storm():
     ''' API endpoint to simulate a log storm for testing Loki ingestion capabilities '''
     raw_count = request.args.get('count', None)
 
-    # Se il parametro non viene passato nell'URL, usiamo il valore di default 100
+    # If the count parameter is not provided, default to 100 log lines. Otherwise, validate and convert it to an integer.
     if raw_count is None:
         count = 100
     else:
         try:
-            # Tenta la conversione esplicita in intero
+            # Try to convert the count parameter to an integer
             count = int(raw_count)
             
-            # Boundary check: evita numeri negativi o tempeste di log eccessive
+            # Boundary checks
             if count < 0 or count > 1000:
                 logger.warning(f"⚠️ Out of bound count parameter received: {count}.", extra=getattr(g, 'log_context', {}))
                 return jsonify({'error': 'Count parameter must be between 0 and 1000'}), 400
 
         except (ValueError, TypeError, OverflowError):
-            # Cattura stringhe non valide ("abc"), float, NaN, Inf o interi giganti
+            # Capture invalid strings ("abc"), float, NaN, Inf o interi giganti
             logger.warning(f"⚠️ Invalid count parameter type received: {raw_count}.", extra=getattr(g, 'log_context', {}))
             return jsonify({'error': 'Count parameter must be an integer'}), 400
 
@@ -327,13 +326,15 @@ def stress_cpu():
     ''' API endpoint to simulate CPU stress for testing auto-scaling and performance monitoring '''
     raw_duration = request.args.get('duration', None)
 
+    # If the duration parameter is not provided, default to 5 seconds. Otherwise, validate and convert it to an integer.
     if raw_duration is None:
         duration = 5
     else:
         try:
+            # Try to convert the duration parameter to an integer
             duration = int(raw_duration)
 
-            # Boundary check: limits 
+            # Boundary checks
             if duration < 1 or duration > 20:
                 logger.warning(f"⚠️ Out of bound duration parameter received: {duration}.", extra=getattr(g, 'log_context', {}))
                 return jsonify({'error': 'Duration parameter must be between 1 and 20 seconds'}), 400
